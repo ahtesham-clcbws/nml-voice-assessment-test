@@ -19,12 +19,33 @@ class GeminiPlaygroundController extends Controller
                 if ($response->successful()) {
                     $allModels = $response->json('models') ?? [];
                     foreach ($allModels as $model) {
-                        if (str_contains(strtolower($model['name']), 'flash')) {
-                            $modelName = str_replace('models/', '', $model['name']);
-                            $models[] = [
-                                'name' => $modelName,
-                                'displayName' => $model['displayName'] ?? $modelName
-                            ];
+                        $name = strtolower($model['name']);
+                        
+                        // Only process models with 'flash' in the name
+                        if (str_contains($name, 'flash')) {
+                            
+                            // Exclude specialized/non-universal models
+                            $excludedKeywords = ['preview', 'image', 'tts', 'transcribe', 'computer-use', 'omni'];
+                            $isUniversal = true;
+                            foreach ($excludedKeywords as $keyword) {
+                                if (str_contains($name, $keyword)) {
+                                    $isUniversal = false;
+                                    break;
+                                }
+                            }
+
+                            if ($isUniversal) {
+                                $modelName = str_replace('models/', '', $model['name']);
+                                
+                                // Determine tier (1: lowest/lite, 2: standard flash)
+                                $tier = str_contains($modelName, 'lite') || str_contains($modelName, '8b') ? 1 : 2;
+
+                                $models[] = [
+                                    'name' => $modelName,
+                                    'displayName' => $model['displayName'] ?? $modelName,
+                                    'tier' => $tier
+                                ];
+                            }
                         }
                     }
                 }
@@ -35,13 +56,19 @@ class GeminiPlaygroundController extends Controller
 
         if (empty($models)) {
             $models = [
-                ['name' => 'gemini-3.8-flash', 'displayName' => 'Gemini 3.8 Flash']
+                ['name' => 'gemini-3.8-flash-lite', 'displayName' => 'Gemini 3.8 Flash Lite', 'tier' => 1],
+                ['name' => 'gemini-3.8-flash', 'displayName' => 'Gemini 3.8 Flash', 'tier' => 2]
             ];
         }
 
-        // Sort so the latest stable flash models are near the top, basic alphabetical sort
+        // Sort intelligently: Lowest tier first (Lite/8b), then alphabetical/version order
         usort($models, function($a, $b) {
-            return $b['name'] <=> $a['name'];
+            if ($a['tier'] === $b['tier']) {
+                // If same tier, sort alphabetically so older/smaller versions might appear first, 
+                // or just standard ascending order.
+                return $a['name'] <=> $b['name'];
+            }
+            return $a['tier'] <=> $b['tier'];
         });
 
         return view('gemini-playground.index', compact('models'));
