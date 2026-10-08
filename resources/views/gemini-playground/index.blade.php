@@ -22,6 +22,13 @@
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Navigation -->
+        <nav class="flex space-x-4 mb-6 border-b border-gray-200 pb-4">
+            <a href="/gemini-playground" class="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4">Free-form Playground</a>
+            <a href="/gemini-tests" class="text-gray-500 hover:text-gray-700 font-medium">Audio Testing Suite</a>
+        </nav>
+
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Gemini Audio Playground</h1>
             <p class="text-gray-600 mt-2">Test Gemini's native audio understanding by providing context and an audio recording.</p>
