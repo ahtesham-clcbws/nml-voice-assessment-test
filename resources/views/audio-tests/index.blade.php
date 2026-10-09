@@ -18,6 +18,14 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        .small-spinner {
+            border: 2px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #3B82F6;
+            width: 1rem;
+            height: 1rem;
+            animation: spin 1s ease-in-out infinite;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
@@ -26,17 +34,17 @@
         <!-- Navigation -->
         <nav class="flex space-x-4 mb-6 border-b border-gray-200 pb-4">
             <a href="/gemini-playground" class="text-gray-500 hover:text-gray-700 font-medium">Free-form Playground</a>
-            <a href="/gemini-tests" class="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4">Audio Testing Suite</a>
+            <a href="/gemini-tests" class="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4">Audio Testing Suite (Batch)</a>
         </nav>
 
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Audio Testing Suite</h1>
-            <p class="text-gray-600 mt-2">Select a predefined test, record your voice, and evaluate using Gemini.</p>
+            <p class="text-gray-600 mt-2">Select a predefined test, assign student names, upload audio files, and evaluate using Gemini in batch.</p>
         </header>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
             <!-- Left Column: Input Form -->
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-fit">
                 
                 <form id="testForm" class="space-y-6">
                     @csrf
@@ -92,35 +100,28 @@
                         </select>
                     </div>
 
-                    <!-- Audio Input -->
-                    <div class="space-y-3 pt-2 border-t border-gray-100">
-                        <label class="block text-sm font-medium text-gray-700">Audio Input</label>
+                    <!-- Audio Inputs (Up to 5) -->
+                    <div class="space-y-4 pt-4 border-t border-gray-200">
+                        <label class="block text-sm font-bold text-gray-700">Student Uploads (Max 5)</label>
+                        <p class="text-xs text-gray-500">Add a name and select an audio file for one or more students to evaluate them simultaneously.</p>
                         
-                        <div class="flex items-center space-x-4">
-                            <button type="button" id="recordBtn" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                                Start Recording
-                            </button>
-                            <button type="button" id="stopBtn" class="hidden inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition">
-                                Stop Recording
-                            </button>
-                            <span id="recordingStatus" class="text-sm text-gray-500 hidden animate-pulse">Recording...</span>
+                        @for($i = 1; $i <= 5; $i++)
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-md student-row">
+                            <div class="flex flex-col md:flex-row gap-3 items-center">
+                                <div class="w-full md:w-1/3">
+                                    <input type="text" id="studentName_{{ $i }}" placeholder="Student {{ $i }} Name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 student-name">
+                                </div>
+                                <div class="w-full md:w-2/3">
+                                    <input type="file" id="audioUpload_{{ $i }}" accept="audio/*" class="block w-full text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 student-audio">
+                                </div>
+                            </div>
                         </div>
-
-                        <div class="flex items-center space-x-4 text-sm text-gray-500">
-                            <span>OR</span>
-                            <input type="file" id="audioUpload" accept="audio/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                        </div>
-
-                        <div id="audioPreviewContainer" class="hidden mt-4 p-4 bg-gray-50 rounded-md border border-gray-200">
-                            <p class="text-xs text-gray-500 mb-2">Selected Audio:</p>
-                            <audio id="audioPlayback" controls class="w-full"></audio>
-                            <button type="button" id="clearAudioBtn" class="mt-2 text-sm text-red-600 hover:text-red-800">Clear Audio / Re-record</button>
-                        </div>
+                        @endfor
                     </div>
 
                     <div class="pt-4 border-t border-gray-200">
                         <button type="submit" id="submitBtn" disabled class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                            <span id="submitText">Evaluate with Gemini</span>
+                            <span id="submitText">Evaluate All with Gemini</span>
                             <div id="submitSpinner" class="hidden spinner ml-3"></div>
                         </button>
                     </div>
@@ -129,44 +130,14 @@
 
             <!-- Right Column: Results Display -->
             <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full min-h-[600px]">
-                <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Evaluation Results</h2>
+                <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Batch Evaluation Results</h2>
                 
-                <div id="loadingState" class="hidden flex-1 flex flex-col items-center justify-center text-gray-500">
-                    <div class="spinner border-blue-500 border-t-transparent w-8 h-8 mb-4"></div>
-                    <p>Evaluating audio with Gemini...</p>
-                </div>
-
                 <div id="emptyState" class="flex-1 flex items-center justify-center text-gray-400">
-                    Select a test and submit audio to see the results.
+                    Select a test, upload student files, and submit to see results.
                 </div>
 
-                <div id="errorState" class="hidden bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-                    <div class="flex">
-                        <div class="ml-3">
-                            <p class="text-sm text-red-700 font-medium" id="errorMessage"></p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="resultState" class="hidden flex-1 flex flex-col">
-                    <div class="flex space-x-4 mb-4 text-xs flex-wrap gap-y-2">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-blue-100 text-blue-800">
-                            Model: <span id="resModel" class="ml-1 font-bold"></span>
-                        </span>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-green-100 text-green-800">
-                            Time: <span id="resTime" class="ml-1 font-bold"></span>
-                        </span>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full font-medium bg-purple-100 text-purple-800">
-                            Tokens: <span id="resTokens" class="ml-1 font-bold"></span>
-                        </span>
-                    </div>
-
-                    <div class="flex-1 bg-gray-50 p-4 rounded-md overflow-y-auto border border-gray-200 prose prose-sm max-w-none text-gray-800" id="resText"></div>
-
-                    <details class="mt-4 border-t pt-4">
-                        <summary class="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none">View Raw Gemini Response</summary>
-                        <pre id="resRaw" class="mt-2 text-xs bg-gray-800 text-green-400 p-4 rounded-md overflow-x-auto"></pre>
-                    </details>
+                <div id="resultsContainer" class="flex-1 space-y-6 overflow-y-auto hidden">
+                    <!-- Dynamic results will be injected here -->
                 </div>
             </div>
         </div>
@@ -179,10 +150,6 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // State
-            let currentAudioBlob = null;
-            let mediaRecorder;
-            let audioChunks = [];
             
             // DOM Elements
             const languageSelect = document.getElementById('languageSelect');
@@ -195,7 +162,6 @@
             const infoInstruction = document.getElementById('infoInstruction');
             const infoText = document.getElementById('infoText');
 
-            const recordBtn = document.getElementById('recordBtn');
             const submitBtn = document.getElementById('submitBtn');
 
             // --- Populate Dropdowns ---
@@ -241,12 +207,30 @@
                 });
             }
 
+            function checkSubmitState() {
+                const hasTest = !!testSelect.value;
+                let hasAudio = false;
+                
+                for(let i=1; i<=5; i++) {
+                    const fileInput = document.getElementById('audioUpload_' + i);
+                    if(fileInput.files.length > 0) {
+                        hasAudio = true;
+                        break;
+                    }
+                }
+
+                if(hasTest && hasAudio) {
+                    submitBtn.disabled = false;
+                } else {
+                    submitBtn.disabled = true;
+                }
+            }
+
             function updateTestInfo() {
                 const testId = testSelect.value;
                 if (!testId) {
                     testInfo.classList.add('hidden');
-                    recordBtn.disabled = true;
-                    submitBtn.disabled = true;
+                    checkSubmitState();
                     return;
                 }
 
@@ -256,7 +240,6 @@
                 infoInstruction.textContent = test.instruction;
                 infoText.textContent = test.display_text;
                 
-                // Adjust text direction for Arabic/Urdu
                 if(test.language === 'Urdu' || test.language === 'Arabic/Qaida') {
                     infoText.setAttribute('dir', 'rtl');
                     infoText.classList.add('text-right');
@@ -266,151 +249,138 @@
                 }
 
                 testInfo.classList.remove('hidden');
-                recordBtn.disabled = false;
                 checkSubmitState();
             }
 
             languageSelect.addEventListener('change', updateSkills);
             skillSelect.addEventListener('change', updateTests);
             testSelect.addEventListener('change', updateTestInfo);
-
-
-            // --- Audio Logic ---
-            const stopBtn = document.getElementById('stopBtn');
-            const recordingStatus = document.getElementById('recordingStatus');
-            const audioUpload = document.getElementById('audioUpload');
-            const audioPreviewContainer = document.getElementById('audioPreviewContainer');
-            const audioPlayback = document.getElementById('audioPlayback');
-            const clearAudioBtn = document.getElementById('clearAudioBtn');
-
-            function checkSubmitState() {
-                if(testSelect.value && currentAudioBlob) {
-                    submitBtn.disabled = false;
-                } else {
-                    submitBtn.disabled = true;
-                }
+            
+            // Listen to file inputs
+            for(let i=1; i<=5; i++) {
+                document.getElementById('audioUpload_' + i).addEventListener('change', checkSubmitState);
             }
-
-            recordBtn.addEventListener('click', async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    
-                    mediaRecorder.ondataavailable = (e) => {
-                        if (e.data.size > 0) audioChunks.push(e.data);
-                    };
-
-                    mediaRecorder.onstop = () => {
-                        currentAudioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                        audioPlayback.src = URL.createObjectURL(currentAudioBlob);
-                        audioPreviewContainer.classList.remove('hidden');
-                        audioUpload.value = ''; 
-                        stream.getTracks().forEach(track => track.stop());
-                        checkSubmitState();
-                    };
-
-                    audioChunks = [];
-                    mediaRecorder.start();
-                    
-                    recordBtn.classList.add('hidden');
-                    stopBtn.classList.remove('hidden');
-                    recordingStatus.classList.remove('hidden');
-                } catch (err) {
-                    alert('Microphone error: ' + err.message);
-                }
-            });
-
-            stopBtn.addEventListener('click', () => {
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-                stopBtn.classList.add('hidden');
-                recordBtn.classList.remove('hidden');
-                recordingStatus.classList.add('hidden');
-            });
-
-            audioUpload.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    currentAudioBlob = file;
-                    audioPlayback.src = URL.createObjectURL(file);
-                    audioPreviewContainer.classList.remove('hidden');
-                    checkSubmitState();
-                }
-            });
-
-            clearAudioBtn.addEventListener('click', () => {
-                currentAudioBlob = null;
-                audioPlayback.src = '';
-                audioUpload.value = '';
-                audioPreviewContainer.classList.add('hidden');
-                checkSubmitState();
-            });
-
 
             // --- Form Submission Logic ---
             const form = document.getElementById('testForm');
             const submitText = document.getElementById('submitText');
             const submitSpinner = document.getElementById('submitSpinner');
             const emptyState = document.getElementById('emptyState');
-            const loadingState = document.getElementById('loadingState');
-            const errorState = document.getElementById('errorState');
-            const errorMessage = document.getElementById('errorMessage');
-            const resultState = document.getElementById('resultState');
+            const resultsContainer = document.getElementById('resultsContainer');
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
 
-                if (!currentAudioBlob || !testSelect.value) return;
+                const testId = testSelect.value;
+                const modelName = document.getElementById('model').value;
+                
+                let studentsToProcess = [];
+                for(let i=1; i<=5; i++) {
+                    const fileInput = document.getElementById('audioUpload_' + i);
+                    const nameInput = document.getElementById('studentName_' + i);
+                    
+                    if(fileInput.files.length > 0) {
+                        studentsToProcess.push({
+                            id: i,
+                            name: nameInput.value.trim() || `Student ${i}`,
+                            file: fileInput.files[0]
+                        });
+                    }
+                }
 
-                // UI Loading
+                if (studentsToProcess.length === 0 || !testId) return;
+
+                // UI Loading Setup
                 submitBtn.disabled = true;
                 submitText.textContent = 'Evaluating...';
                 submitSpinner.classList.remove('hidden');
+                
                 emptyState.classList.add('hidden');
-                errorState.classList.add('hidden');
-                resultState.classList.add('hidden');
-                loadingState.classList.remove('hidden');
+                resultsContainer.classList.remove('hidden');
+                resultsContainer.innerHTML = ''; // Clear previous results
 
-                const formData = new FormData(form);
-                let extension = currentAudioBlob.name ? currentAudioBlob.name.split('.').pop() : 'webm';
-                formData.append('audio', currentAudioBlob, `recording.${extension}`);
+                // Create placeholder cards for each student
+                const resultElements = {};
+                studentsToProcess.forEach(student => {
+                    const card = document.createElement('div');
+                    card.className = "border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm";
+                    card.innerHTML = `
+                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                            <h4 class="font-bold text-gray-800">${student.name}</h4>
+                            <div class="flex items-center text-xs text-blue-600 font-medium" id="status_${student.id}">
+                                <div class="small-spinner mr-2"></div> Processing...
+                            </div>
+                        </div>
+                        <div class="p-4" id="content_${student.id}">
+                            <div class="animate-pulse flex space-x-4">
+                                <div class="flex-1 space-y-4 py-1">
+                                    <div class="h-2 bg-gray-300 rounded w-3/4"></div>
+                                    <div class="space-y-2">
+                                        <div class="h-2 bg-gray-300 rounded"></div>
+                                        <div class="h-2 bg-gray-300 rounded w-5/6"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    resultsContainer.appendChild(card);
+                    resultElements[student.id] = {
+                        status: card.querySelector(`#status_${student.id}`),
+                        content: card.querySelector(`#content_${student.id}`)
+                    };
+                });
 
-                try {
-                    const response = await fetch('/gemini-tests/process', {
-                        method: 'POST',
-                        body: formData,
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                // Process concurrently
+                const promises = studentsToProcess.map(async (student) => {
+                    const formData = new FormData();
+                    formData.append('test_id', testId);
+                    formData.append('model', modelName);
+                    formData.append('audio', student.file);
+
+                    try {
+                        const response = await fetch('/gemini-tests/process', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                            }
+                        });
+
+                        const data = await response.json();
+                        const elements = resultElements[student.id];
+
+                        if (response.ok && data.success) {
+                            elements.status.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Done (${data.time})</span>`;
+                            elements.content.innerHTML = `
+                                <div class="prose prose-sm max-w-none text-gray-800 bg-white p-3 rounded border border-gray-200">
+                                    ${data.html}
+                                </div>
+                            `;
+                        } else {
+                            elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
+                            elements.content.innerHTML = `
+                                <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                                    ${data.error || 'Evaluation failed.'}
+                                </div>
+                            `;
                         }
-                    });
-
-                    const data = await response.json();
-                    loadingState.classList.add('hidden');
-
-                    if (response.ok && data.success) {
-                        resultState.classList.remove('hidden');
-                        
-                        document.getElementById('resText').innerHTML = data.html;
-                        document.getElementById('resModel').textContent = data.model;
-                        document.getElementById('resTime').textContent = data.time;
-                        
-                        let tokensText = 'N/A';
-                        if (data.tokens) tokensText = `${data.tokens.totalTokenCount}`;
-                        document.getElementById('resTokens').textContent = tokensText;
-                        
-                        document.getElementById('resRaw').textContent = JSON.stringify(data.raw, null, 2);
-                    } else {
-                        errorState.classList.remove('hidden');
-                        errorMessage.textContent = data.error || 'Evaluation failed.';
+                    } catch (error) {
+                        const elements = resultElements[student.id];
+                        elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
+                        elements.content.innerHTML = `
+                            <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                                Network or server error: ${error.message}
+                            </div>
+                        `;
                     }
-                } catch (error) {
-                    loadingState.classList.add('hidden');
-                    errorState.classList.remove('hidden');
-                    errorMessage.textContent = 'Error: ' + error.message;
-                } finally {
-                    submitBtn.disabled = false;
-                    submitText.textContent = 'Evaluate with Gemini';
-                    submitSpinner.classList.add('hidden');
-                }
+                });
+
+                // Wait for all to finish
+                await Promise.allSettled(promises);
+
+                submitBtn.disabled = false;
+                submitText.textContent = 'Evaluate All with Gemini';
+                submitSpinner.classList.add('hidden');
             });
         });
     </script>
