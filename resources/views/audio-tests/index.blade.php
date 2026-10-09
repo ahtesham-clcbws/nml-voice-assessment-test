@@ -74,11 +74,22 @@
                     </div>
 
                     <!-- Test Selection -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Predefined Test</label>
-                        <select id="testSelect" name="test_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
-                            <option value="">Select a test...</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Predefined Test</label>
+                            <select id="testSelect" name="test_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                                <option value="">Select a test...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Gemini Model</label>
+                            <select id="modelSelect" name="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                                @foreach($models as $model)
+                                    <option value="{{ $model['name'] }}">{{ $model['displayName'] }} ({{ $model['name'] }})</option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Leave as default for lowest-cost suitable model.</p>
+                        </div>
                     </div>
 
                     <!-- Test Information Display -->
@@ -102,16 +113,22 @@
                     <!-- Audio Inputs (Up to 5) -->
                     <div class="space-y-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-gray-700">Student Uploads (Max 5)</label>
-                        <p class="text-xs text-gray-500">Add a name and select an audio file for one or more students to evaluate them simultaneously.</p>
+                        <p class="text-xs text-gray-500">Add a name and select an audio file (or record directly) to evaluate them simultaneously.</p>
                         
                         @for($i = 1; $i <= 5; $i++)
                         <div class="p-3 bg-gray-50 border border-gray-200 rounded-md student-row">
-                            <div class="flex flex-col md:flex-row gap-3 items-center">
-                                <div class="w-full md:w-1/3">
+                            <div class="flex flex-col lg:flex-row gap-3 items-center">
+                                <div class="w-full lg:w-1/4">
                                     <input type="text" id="studentName_{{ $i }}" placeholder="Student {{ $i }} Name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 student-name">
                                 </div>
-                                <div class="w-full md:w-2/3">
+                                <div class="w-full lg:w-3/4 flex flex-col sm:flex-row items-center gap-2">
                                     <input type="file" id="audioUpload_{{ $i }}" accept="audio/*" class="block w-full text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 student-audio">
+                                    
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <button type="button" id="recordBtn_{{ $i }}" class="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-semibold hover:bg-red-200 transition">Record</button>
+                                        <button type="button" id="stopBtn_{{ $i }}" class="hidden px-3 py-1.5 bg-gray-800 text-white rounded-md text-xs font-semibold hover:bg-gray-900 transition">Stop</button>
+                                        <audio id="audioPlayback_{{ $i }}" controls class="hidden h-8 w-32 sm:w-40"></audio>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -119,10 +136,16 @@
                     </div>
 
                     <div class="pt-4 border-t border-gray-200">
-                        <button type="submit" id="submitBtn" disabled class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                            <span id="submitText">Evaluate All with Gemini</span>
-                            <div id="submitSpinner" class="hidden spinner ml-3"></div>
-                        </button>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button type="submit" id="submitBtn" disabled class="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                                <span id="submitText">Evaluate All with Gemini</span>
+                                <div id="submitSpinner" class="hidden spinner ml-3"></div>
+                            </button>
+                            <button type="button" id="exportBtn" class="hidden flex-1 flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                                <svg class="w-5 h-5 mr-2 -ml-1 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                Export Results (JSON)
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -132,7 +155,7 @@
                 <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Batch Evaluation Results</h2>
                 
                 <div id="emptyState" class="flex-1 flex items-center justify-center text-gray-400">
-                    Select a test, upload student files, and submit to see results.
+                    Select a test, upload or record student audio, and submit to see results.
                 </div>
 
                 <div id="resultsContainer" class="flex-1 space-y-6 overflow-y-auto hidden">
@@ -162,6 +185,21 @@
             const infoText = document.getElementById('infoText');
 
             const submitBtn = document.getElementById('submitBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            let allResults = [];
+            
+            // Store recorded blobs temporarily
+            const recordedBlobs = {};
+
+            // HTML Escape utility to prevent XSS
+            function escapeHtml(unsafe) {
+                return (unsafe || '').toString()
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
 
             // --- Populate Dropdowns ---
             const languages = [...new Set(allTests.map(t => t.language))];
@@ -212,7 +250,7 @@
                 
                 for(let i=1; i<=5; i++) {
                     const fileInput = document.getElementById('audioUpload_' + i);
-                    if(fileInput.files.length > 0) {
+                    if(fileInput.files.length > 0 || recordedBlobs[i]) {
                         hasAudio = true;
                         break;
                     }
@@ -257,9 +295,73 @@
             skillSelect.addEventListener('change', updateTests);
             testSelect.addEventListener('change', updateTestInfo);
             
-            // Listen to file inputs
+            // --- Audio Recording Logic ---
             for(let i=1; i<=5; i++) {
-                document.getElementById('audioUpload_' + i).addEventListener('change', checkSubmitState);
+                const fileInput = document.getElementById('audioUpload_' + i);
+                const recordBtn = document.getElementById('recordBtn_' + i);
+                const stopBtn = document.getElementById('stopBtn_' + i);
+                const audioPlayback = document.getElementById('audioPlayback_' + i);
+                
+                let mediaRecorder;
+                let audioChunks = [];
+
+                fileInput.addEventListener('change', () => {
+                    // Clear recording if a file is uploaded
+                    if (fileInput.files.length > 0) {
+                        delete recordedBlobs[i];
+                        audioPlayback.classList.add('hidden');
+                        audioPlayback.src = '';
+                        recordBtn.classList.remove('hidden');
+                        recordBtn.textContent = 'Record';
+                    }
+                    checkSubmitState();
+                });
+
+                recordBtn.addEventListener('click', async () => {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaRecorder = new MediaRecorder(stream);
+                        audioChunks = [];
+
+                        mediaRecorder.ondataavailable = event => {
+                            if (event.data.size > 0) {
+                                audioChunks.push(event.data);
+                            }
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                            recordedBlobs[i] = audioBlob;
+                            
+                            const audioUrl = URL.createObjectURL(audioBlob);
+                            audioPlayback.src = audioUrl;
+                            audioPlayback.classList.remove('hidden');
+                            
+                            // Clear file input since we have a recording
+                            fileInput.value = '';
+                            
+                            recordBtn.classList.remove('hidden');
+                            recordBtn.textContent = 'Re-record';
+                            stopBtn.classList.add('hidden');
+                            checkSubmitState();
+                        };
+
+                        mediaRecorder.start();
+                        recordBtn.classList.add('hidden');
+                        stopBtn.classList.remove('hidden');
+                        audioPlayback.classList.add('hidden');
+                        
+                    } catch (err) {
+                        alert('Microphone access is required to record audio.');
+                    }
+                });
+
+                stopBtn.addEventListener('click', () => {
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                    }
+                });
             }
 
             // --- Form Submission Logic ---
@@ -273,6 +375,8 @@
                 e.preventDefault();
 
                 const testId = testSelect.value;
+                allResults = [];
+                exportBtn.classList.add('hidden');
                 
                 let studentsToProcess = [];
                 for(let i=1; i<=5; i++) {
@@ -284,6 +388,13 @@
                             id: i,
                             name: nameInput.value.trim() || `Student ${i}`,
                             file: fileInput.files[0]
+                        });
+                    } else if (recordedBlobs[i]) {
+                        // For recorded blobs, append them as files
+                        studentsToProcess.push({
+                            id: i,
+                            name: nameInput.value.trim() || `Student ${i}`,
+                            file: new File([recordedBlobs[i]], `recording_${i}.webm`, { type: 'audio/webm' })
                         });
                     }
                 }
@@ -306,7 +417,7 @@
                     card.className = "border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm";
                     card.innerHTML = `
                         <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                            <h4 class="font-bold text-gray-800">${student.name}</h4>
+                            <h4 class="font-bold text-gray-800">${escapeHtml(student.name)}</h4>
                             <div class="flex items-center text-xs text-blue-600 font-medium" id="status_${student.id}">
                                 <div class="small-spinner mr-2"></div> Processing...
                             </div>
@@ -330,56 +441,104 @@
                     };
                 });
 
-                // Process concurrently
-                const promises = studentsToProcess.map(async (student) => {
-                    const formData = new FormData();
-                    formData.append('test_id', testId);
-                    formData.append('audio', student.file);
+                // Helper to chunk an array (concurrency limit = 2 requests at a time)
+                const chunkArray = (arr, size) => arr.length ? [arr.slice(0, size), ...chunkArray(arr.slice(size), size)] : [];
+                
+                const studentChunks = chunkArray(studentsToProcess, 2);
 
-                    try {
-                        const response = await fetch('/gemini-tests/process', {
-                            method: 'POST',
-                            body: formData,
-                            headers: {
-                                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                for (const chunk of studentChunks) {
+                    const promises = chunk.map(async (student) => {
+                        const formData = new FormData();
+                        formData.append('test_id', testId);
+                        formData.append('audio', student.file);
+                        formData.append('model', document.getElementById('modelSelect').value);
+
+                        try {
+                            const response = await fetch('/gemini-tests/process', {
+                                method: 'POST',
+                                body: formData,
+                                headers: {
+                                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                                }
+                            });
+
+                            const data = await response.json();
+                            const elements = resultElements[student.id];
+
+                            if (response.ok && data.success) {
+                                elements.status.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Done (${escapeHtml(data.time)})</span>`;
+                                // HTML from the backend is assumed safe if sanitized there. We won't double-escape the rich text here, 
+                                // but we did escape the student name.
+                                elements.content.innerHTML = `
+                                    <div class="prose prose-sm max-w-none text-gray-800 bg-white p-3 rounded border border-gray-200">
+                                        ${data.html}
+                                    </div>
+                                `;
+
+                                allResults.push({
+                                    student: student.name,
+                                    test_id: testId,
+                                    model: data.model,
+                                    success: true,
+                                    time: data.time,
+                                    raw_response: data.raw,
+                                    evaluation_html: data.html
+                                });
+                            } else {
+                                elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
+                                elements.content.innerHTML = `
+                                    <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                                        ${escapeHtml(data.error || 'Evaluation failed.')}
+                                    </div>
+                                `;
+
+                                allResults.push({
+                                    student: student.name,
+                                    test_id: testId,
+                                    success: false,
+                                    error: data.error || 'Evaluation failed.'
+                                });
                             }
-                        });
-
-                        const data = await response.json();
-                        const elements = resultElements[student.id];
-
-                        if (response.ok && data.success) {
-                            elements.status.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Done (${data.time})</span>`;
-                            elements.content.innerHTML = `
-                                <div class="prose prose-sm max-w-none text-gray-800 bg-white p-3 rounded border border-gray-200">
-                                    ${data.html}
-                                </div>
-                            `;
-                        } else {
+                        } catch (error) {
+                            const elements = resultElements[student.id];
                             elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
                             elements.content.innerHTML = `
                                 <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
-                                    ${data.error || 'Evaluation failed.'}
+                                    Network or server error: ${escapeHtml(error.message)}
                                 </div>
                             `;
-                        }
-                    } catch (error) {
-                        const elements = resultElements[student.id];
-                        elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
-                        elements.content.innerHTML = `
-                            <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
-                                Network or server error: ${error.message}
-                            </div>
-                        `;
-                    }
-                });
 
-                // Wait for all to finish
-                await Promise.allSettled(promises);
+                            allResults.push({
+                                student: student.name,
+                                test_id: testId,
+                                success: false,
+                                error: error.message
+                            });
+                        }
+                    });
+                    
+                    // Wait for current chunk to finish before moving to the next
+                    await Promise.allSettled(promises);
+                }
 
                 submitBtn.disabled = false;
                 submitText.textContent = 'Evaluate All with Gemini';
                 submitSpinner.classList.add('hidden');
+                
+                if (allResults.length > 0) {
+                    exportBtn.classList.remove('hidden');
+                }
+            });
+
+            // Handle export
+            exportBtn.addEventListener('click', () => {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(allResults, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", "voice_assessment_results.json");
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
             });
         });
     </script>

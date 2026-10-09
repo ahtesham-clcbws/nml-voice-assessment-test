@@ -27,55 +27,76 @@ class GeminiModelService
 
         return Cache::remember('gemini_models', 3600, function () use ($apiKey) {
             $models = [];
+            $nextPageToken = null;
+            
             try {
-                // Fetch all models listed under this API Key. Timeout quickly (10s) as this blocks UI loads.
-                $response = Http::timeout(10)->get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-                if ($response->successful()) {
-                    $allModels = $response->json('models') ?? [];
-                    foreach ($allModels as $model) {
-                        $name = strtolower($model['name']);
-                        $methods = $model['supportedGenerationMethods'] ?? [];
-                        
-                        // We ONLY want models capable of general content generation (text/audio context).
-                        if (!in_array('generateContent', $methods)) {
-                            continue;
-                        }
+                do {
+                    $url = "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}";
+                    if ($nextPageToken) {
+                        $url .= "&pageToken={$nextPageToken}";
+                    }
 
-                        // Filter out highly specialized or experimental models we don't need for basic audio evaluation.
-                        $excludedKeywords = ['preview', 'image', 'tts', 'transcribe', 'computer-use', 'omni'];
-                        $isUniversal = true;
-                        foreach ($excludedKeywords as $keyword) {
-                            if (str_contains($name, $keyword)) {
-                                $isUniversal = false;
-                                break;
+                    $response = Http::timeout(15)->get($url);
+                    if ($response->successful()) {
+                        $responseData = $response->json();
+                        $allModels = $responseData['models'] ?? [];
+                        
+                        foreach ($allModels as $model) {
+                            $name = strtolower($model['name']);
+                            $methods = $model['supportedGenerationMethods'] ?? [];
+                            
+                            // Capability Check 1: Must support generation
+                            if (!in_array('generateContent', $methods)) {
+                                continue;
+                            }
+
+                            // Capability Check 2: Must support audio. 
+                            // Generally, models with < 32k input tokens don't support multimodal audio natively.
+                            // Also exclude explicitly named non-audio models.
+                            $inputLimit = $model['inputTokenLimit'] ?? 0;
+                            if ($inputLimit < 32768) {
+                                continue;
+                            }
+
+                            // Capability Check 3: Exclude highly specialized non-LLMs
+                            $excludedKeywords = ['embed', 'aqa', 'transcribe', 'tts', 'computer-use', 'lyria', 'veo'];
+                            $isUniversal = true;
+                            foreach ($excludedKeywords as $keyword) {
+                                if (str_contains($name, $keyword)) {
+                                    $isUniversal = false;
+                                    break;
+                                }
+                            }
+
+                            if ($isUniversal) {
+                                $modelName = str_replace('models/', '', $model['name']);
+                                
+                                // Prioritize inexpensive/fast models.
+                                $tier = 3;
+                                if (str_contains($modelName, 'lite') || str_contains($modelName, '8b')) {
+                                    $tier = 1;
+                                } elseif (str_contains($modelName, 'flash')) {
+                                    $tier = 2;
+                                }
+
+                                $models[] = [
+                                    'name' => $modelName,
+                                    'displayName' => $model['displayName'] ?? $modelName,
+                                    'tier' => $tier
+                                ];
                             }
                         }
-
-                        // We prioritize 'flash' models because they are extremely fast and cost-effective,
-                        // which is ideal for real-time student audio evaluation.
-                        if ($isUniversal && str_contains($name, 'flash')) {
-                            // Strip 'models/' prefix since the API endpoints expect just the model name.
-                            $modelName = str_replace('models/', '', $model['name']);
-                            
-                            // Assign tiers to sort them properly. 
-                            // Tier 1 (Fastest/Cheapest): flash-lite or 8b variants.
-                            // Tier 2 (Standard): standard flash models.
-                            $tier = str_contains($modelName, 'lite') || str_contains($modelName, '8b') ? 1 : 2;
-                            $models[] = [
-                                'name' => $modelName,
-                                'displayName' => $model['displayName'] ?? $modelName,
-                                'tier' => $tier
-                            ];
-                        }
+                        
+                        $nextPageToken = $responseData['nextPageToken'] ?? null;
+                    } else {
+                        Log::error('Failed to fetch Gemini models: ' . $response->body());
+                        break;
                     }
-                }
+                } while ($nextPageToken);
             } catch (\Exception $e) {
-                // If fetching fails, log it, and an empty array will trigger fallback logic in controllers.
-                Log::error('Failed to fetch Gemini models: ' . $e->getMessage());
+                Log::error('Gemini model discovery exception: ' . $e->getMessage());
             }
 
-            // Sort models by tier (ascending) so Tier 1 is always presented/selected first.
-            // If tiers match, sort alphabetically by name.
             usort($models, function($a, $b) {
                 if ($a['tier'] === $b['tier']) return $a['name'] <=> $b['name'];
                 return $a['tier'] <=> $b['tier'];

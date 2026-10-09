@@ -104,16 +104,32 @@ class GeminiPlaygroundController extends Controller
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                
                 // 7. Extract the generated text securely
-                $textResponse = 'No text response found in the API response.';
-                if (isset($responseData['candidates'][0]['content']['parts'])) {
-                    foreach ($responseData['candidates'][0]['content']['parts'] as $part) {
+                $candidate = $responseData['candidates'][0] ?? null;
+                
+                if (!$candidate) {
+                    return response()->json(['success' => false, 'error' => 'The AI evaluation service returned an empty response.'], 500);
+                }
+
+                $finishReason = $candidate['finishReason'] ?? null;
+                if ($finishReason === 'SAFETY') {
+                    return response()->json(['success' => false, 'error' => 'The audio was blocked by Gemini safety filters.'], 400);
+                } elseif ($finishReason !== 'STOP' && $finishReason !== null) {
+                    return response()->json(['success' => false, 'error' => "Evaluation ended prematurely (Reason: {$finishReason})."], 400);
+                }
+
+                $textResponse = null;
+                if (isset($candidate['content']['parts'])) {
+                    foreach ($candidate['content']['parts'] as $part) {
                         if (isset($part['text'])) {
                             $textResponse = $part['text'];
                             break;
                         }
                     }
+                }
+
+                if (!$textResponse) {
+                    return response()->json(['success' => false, 'error' => 'The AI model did not generate any text feedback.'], 500);
                 }
 
                 // 8. Safely parse Markdown to HTML

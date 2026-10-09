@@ -52,6 +52,7 @@ class AudioTestController extends Controller
         // We enforce strict mime types (mp3, wav, webm, mp4, etc.) and a max file size of 20MB.
         $request->validate([
             'test_id' => 'required|string',
+            'model' => 'nullable|string',
             'audio' => 'required|file|mimes:audio/mpeg,mpga,mp3,wav,webm,ogg,mp4|max:20480',
         ]);
 
@@ -64,9 +65,16 @@ class AudioTestController extends Controller
             return response()->json(['error' => 'Invalid test ID'], 400);
         }
 
-        // 3. Automatically select the best, most lightweight model available for audio processing.
-        // We do this server-side to prevent users from bypassing or injecting expensive model names.
-        $modelName = $this->modelService->getBestModel();
+        // 3. Select the requested model if valid, otherwise fallback to the best, most lightweight model.
+        $requestedModel = $request->input('model');
+        $modelName = null;
+        
+        if ($requestedModel && $this->modelService->isValidModel($requestedModel)) {
+            $modelName = $requestedModel;
+        } else {
+            $modelName = $this->modelService->getBestModel();
+        }
+
         if (!$modelName) {
             return response()->json(['error' => 'No valid Gemini models available on the server.'], 500);
         }
@@ -122,14 +130,31 @@ class AudioTestController extends Controller
                 
                 // 8. Safely extract text from the potentially complex Gemini API response.
                 // The API can return multiple candidates or parts. We locate the first valid text node.
-                $textResponse = 'No text response found in the API response.';
-                if (isset($responseData['candidates'][0]['content']['parts'])) {
-                    foreach ($responseData['candidates'][0]['content']['parts'] as $part) {
+                $candidate = $responseData['candidates'][0] ?? null;
+                
+                if (!$candidate) {
+                    return response()->json(['success' => false, 'error' => 'The AI evaluation service returned an empty response.'], 500);
+                }
+
+                $finishReason = $candidate['finishReason'] ?? null;
+                if ($finishReason === 'SAFETY') {
+                    return response()->json(['success' => false, 'error' => 'The audio was blocked by Gemini safety filters.'], 400);
+                } elseif ($finishReason !== 'STOP' && $finishReason !== null) {
+                    return response()->json(['success' => false, 'error' => "Evaluation ended prematurely (Reason: {$finishReason})."], 400);
+                }
+
+                $textResponse = null;
+                if (isset($candidate['content']['parts'])) {
+                    foreach ($candidate['content']['parts'] as $part) {
                         if (isset($part['text'])) {
                             $textResponse = $part['text'];
                             break;
                         }
                     }
+                }
+
+                if (!$textResponse) {
+                    return response()->json(['success' => false, 'error' => 'The AI model did not generate any text feedback.'], 500);
                 }
 
                 // 9. Convert Markdown to HTML securely.
