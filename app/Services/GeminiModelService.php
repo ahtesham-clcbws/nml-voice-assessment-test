@@ -75,4 +75,10 @@ class GeminiModelService
         }
         return false;
     }
+
+    public function getBestModel(): ?string
+    {
+        $models = $this->getAvailableModels();
+        return !empty($models) ? $models[0]['name'] : null;
+    }
 }

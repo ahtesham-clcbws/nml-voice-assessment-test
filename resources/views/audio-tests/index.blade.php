@@ -91,15 +91,6 @@
                         </div>
                     </div>
 
-                    <div>
-                        <label for="model" class="block text-sm font-medium text-gray-700">Gemini Model</label>
-                        <select id="model" name="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
-                            @foreach($models as $model)
-                                <option value="{{ $model['name'] }}">{{ $model['displayName'] }} ({{ $model['name'] }})</option>
-                            @endforeach
-                        </select>
-                    </div>
-
                     <!-- Audio Inputs (Up to 5) -->
                     <div class="space-y-4 pt-4 border-t border-gray-200">
                         <label class="block text-sm font-bold text-gray-700">Student Uploads (Max 5)</label>
@@ -272,7 +263,6 @@
                 e.preventDefault();
 
                 const testId = testSelect.value;
-                const modelName = document.getElementById('model').value;
                 
                 let studentsToProcess = [];
                 for(let i=1; i<=5; i++) {
@@ -334,7 +324,6 @@
                 const promises = studentsToProcess.map(async (student) => {
                     const formData = new FormData();
                     formData.append('test_id', testId);
-                    formData.append('model', modelName);
                     formData.append('audio', student.file);
 
                     try {

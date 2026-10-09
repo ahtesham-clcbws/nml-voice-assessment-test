@@ -29,7 +29,6 @@ class AudioTestController extends Controller
     {
         $request->validate([
             'test_id' => 'required|string',
-            'model' => 'required|string',
             'audio' => 'required|file|mimes:audio/mpeg,mpga,mp3,wav,webm,ogg,mp4|max:20480',
         ]);
 
@@ -40,9 +39,9 @@ class AudioTestController extends Controller
             return response()->json(['error' => 'Invalid test ID'], 400);
         }
 
-        $modelName = $request->input('model');
-        if (!$this->modelService->isValidModel($modelName)) {
-            return response()->json(['error' => 'Invalid Gemini model selected. Please refresh and try again.'], 400);
+        $modelName = $this->modelService->getBestModel();
+        if (!$modelName) {
+            return response()->json(['error' => 'No valid Gemini models available on the server.'], 500);
         }
 
         $apiKey = env('GEMINI_API_KEY');
