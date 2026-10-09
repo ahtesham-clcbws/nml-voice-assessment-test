@@ -29,6 +29,8 @@ class GeminiModelService
             $models = [];
             $nextPageToken = null;
             
+            $success = true;
+            
             try {
                 do {
                     $url = "https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}";
@@ -50,15 +52,7 @@ class GeminiModelService
                                 continue;
                             }
 
-                            // Capability Check 2: Must support audio. 
-                            // Generally, models with < 32k input tokens don't support multimodal audio natively.
-                            // Also exclude explicitly named non-audio models.
-                            $inputLimit = $model['inputTokenLimit'] ?? 0;
-                            if ($inputLimit < 32768) {
-                                continue;
-                            }
-
-                            // Capability Check 3: Exclude highly specialized non-LLMs
+                            // Capability Check 2: Exclude highly specialized non-LLMs
                             $excludedKeywords = ['embed', 'aqa', 'transcribe', 'tts', 'computer-use', 'lyria', 'veo'];
                             $isUniversal = true;
                             foreach ($excludedKeywords as $keyword) {
@@ -90,11 +84,19 @@ class GeminiModelService
                         $nextPageToken = $responseData['nextPageToken'] ?? null;
                     } else {
                         Log::error('Failed to fetch Gemini models: ' . $response->body());
+                        $success = false;
                         break;
                     }
                 } while ($nextPageToken);
             } catch (\Exception $e) {
                 Log::error('Gemini model discovery exception: ' . $e->getMessage());
+                $success = false;
+            }
+
+            if (!$success && empty($models)) {
+                return [
+                    ['name' => 'gemini-1.5-flash', 'displayName' => 'Gemini 1.5 Flash (Fallback)', 'tier' => 2]
+                ];
             }
 
             usort($models, function($a, $b) {

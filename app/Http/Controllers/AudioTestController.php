@@ -69,8 +69,12 @@ class AudioTestController extends Controller
         $requestedModel = $request->input('model');
         $modelName = null;
         
-        if ($requestedModel && $this->modelService->isValidModel($requestedModel)) {
-            $modelName = $requestedModel;
+        if ($requestedModel) {
+            if ($this->modelService->isValidModel($requestedModel)) {
+                $modelName = $requestedModel;
+            } else {
+                return response()->json(['success' => false, 'error' => 'Invalid or unsupported model selected.'], 400);
+            }
         } else {
             $modelName = $this->modelService->getBestModel();
         }

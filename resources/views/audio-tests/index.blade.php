@@ -42,12 +42,12 @@
         <!-- Navigation -->
         <nav class="flex space-x-4 mb-6 border-b border-gray-200 pb-4">
             <a href="/gemini-playground" class="text-gray-500 hover:text-gray-700 font-medium">Free-form Playground</a>
-            <a href="/gemini-tests" class="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4">Audio Testing Suite (Batch)</a>
+            <a href="/gemini-tests" class="text-blue-600 font-medium border-b-2 border-blue-600 pb-4 -mb-4">Audio Testing Suite</a>
         </nav>
 
         <header class="mb-8">
             <h1 class="text-3xl font-bold text-gray-900">Audio Testing Suite</h1>
-            <p class="text-gray-600 mt-2">Select a predefined test, assign student names, upload audio files, and evaluate using Gemini in batch.</p>
+            <p class="text-gray-600 mt-2">Select a predefined test, upload or record an audio file, and evaluate using Gemini.</p>
         </header>
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
@@ -110,35 +110,30 @@
                         </div>
                     </div>
 
-                    <!-- Audio Inputs (Up to 5) -->
+                    <!-- Audio Input -->
                     <div class="space-y-4 pt-4 border-t border-gray-200">
-                        <label class="block text-sm font-bold text-gray-700">Student Uploads (Max 5)</label>
-                        <p class="text-xs text-gray-500">Add a name and select an audio file (or record directly) to evaluate them simultaneously.</p>
+                        <label class="block text-sm font-bold text-gray-700">Audio Input</label>
+                        <p class="text-xs text-gray-500">Select an audio file or record directly.</p>
                         
-                        @for($i = 1; $i <= 5; $i++)
-                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-md student-row">
-                            <div class="flex flex-col lg:flex-row gap-3 items-center">
-                                <div class="w-full lg:w-1/4">
-                                    <input type="text" id="studentName_{{ $i }}" placeholder="Student {{ $i }} Name" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2 student-name">
-                                </div>
-                                <div class="w-full lg:w-3/4 flex flex-col sm:flex-row items-center gap-2">
-                                    <input type="file" id="audioUpload_{{ $i }}" accept="audio/*" class="block w-full text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200 student-audio">
+                        <div class="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                            <div class="flex flex-col sm:flex-row gap-3 items-center">
+                                <div class="w-full flex flex-col sm:flex-row items-center gap-2">
+                                    <input type="file" id="audioUpload" accept="audio/*" class="block w-full text-sm text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-100 file:text-blue-700 hover:file:bg-blue-200">
                                     
                                     <div class="flex items-center gap-2 shrink-0">
-                                        <button type="button" id="recordBtn_{{ $i }}" class="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-semibold hover:bg-red-200 transition">Record</button>
-                                        <button type="button" id="stopBtn_{{ $i }}" class="hidden px-3 py-1.5 bg-gray-800 text-white rounded-md text-xs font-semibold hover:bg-gray-900 transition">Stop</button>
-                                        <audio id="audioPlayback_{{ $i }}" controls class="hidden h-8 w-32 sm:w-40"></audio>
+                                        <button type="button" id="recordBtn" class="px-3 py-1.5 bg-red-100 text-red-700 rounded-md text-xs font-semibold hover:bg-red-200 transition">Record</button>
+                                        <button type="button" id="stopBtn" class="hidden px-3 py-1.5 bg-gray-800 text-white rounded-md text-xs font-semibold hover:bg-gray-900 transition">Stop</button>
+                                        <audio id="audioPlayback" controls class="hidden h-8 w-40 sm:w-64"></audio>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        @endfor
                     </div>
 
                     <div class="pt-4 border-t border-gray-200">
                         <div class="flex flex-col sm:flex-row gap-3">
                             <button type="submit" id="submitBtn" disabled class="flex-1 flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-                                <span id="submitText">Evaluate All with Gemini</span>
+                                <span id="submitText">Evaluate with Gemini</span>
                                 <div id="submitSpinner" class="hidden spinner ml-3"></div>
                             </button>
                             <button type="button" id="exportBtn" class="hidden flex-1 flex justify-center py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
@@ -152,7 +147,7 @@
 
             <!-- Right Column: Results Display -->
             <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full min-h-150">
-                <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Batch Evaluation Results</h2>
+                <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Evaluation Result</h2>
                 
                 <div id="emptyState" class="flex-1 flex items-center justify-center text-gray-400">
                     Select a test, upload or record student audio, and submit to see results.
@@ -188,8 +183,8 @@
             const exportBtn = document.getElementById('exportBtn');
             let allResults = [];
             
-            // Store recorded blobs temporarily
-            const recordedBlobs = {};
+            // Store recorded blob temporarily
+            let recordedBlob = null;
 
             // HTML Escape utility to prevent XSS
             function escapeHtml(unsafe) {
@@ -246,15 +241,8 @@
 
             function checkSubmitState() {
                 const hasTest = !!testSelect.value;
-                let hasAudio = false;
-                
-                for(let i=1; i<=5; i++) {
-                    const fileInput = document.getElementById('audioUpload_' + i);
-                    if(fileInput.files.length > 0 || recordedBlobs[i]) {
-                        hasAudio = true;
-                        break;
-                    }
-                }
+                const fileInput = document.getElementById('audioUpload');
+                const hasAudio = fileInput.files.length > 0 || recordedBlob;
 
                 if(hasTest && hasAudio) {
                     submitBtn.disabled = false;
@@ -296,73 +284,70 @@
             testSelect.addEventListener('change', updateTestInfo);
             
             // --- Audio Recording Logic ---
-            for(let i=1; i<=5; i++) {
-                const fileInput = document.getElementById('audioUpload_' + i);
-                const recordBtn = document.getElementById('recordBtn_' + i);
-                const stopBtn = document.getElementById('stopBtn_' + i);
-                const audioPlayback = document.getElementById('audioPlayback_' + i);
-                
-                let mediaRecorder;
-                let audioChunks = [];
+            const fileInput = document.getElementById('audioUpload');
+            const recordBtn = document.getElementById('recordBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const audioPlayback = document.getElementById('audioPlayback');
+            
+            let mediaRecorder;
+            let audioChunks = [];
 
-                fileInput.addEventListener('change', () => {
-                    // Clear recording if a file is uploaded
-                    if (fileInput.files.length > 0) {
-                        delete recordedBlobs[i];
-                        audioPlayback.classList.add('hidden');
-                        audioPlayback.src = '';
-                        recordBtn.classList.remove('hidden');
-                        recordBtn.textContent = 'Record';
-                    }
-                    checkSubmitState();
-                });
+            fileInput.addEventListener('change', () => {
+                // Clear recording if a file is uploaded
+                if (fileInput.files.length > 0) {
+                    recordedBlob = null;
+                    audioPlayback.classList.remove('hidden');
+                    audioPlayback.src = URL.createObjectURL(fileInput.files[0]);
+                    recordBtn.classList.remove('hidden');
+                    recordBtn.textContent = 'Record';
+                }
+                checkSubmitState();
+            });
 
-                recordBtn.addEventListener('click', async () => {
-                    try {
-                        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                        mediaRecorder = new MediaRecorder(stream);
-                        audioChunks = [];
+            recordBtn.addEventListener('click', async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
 
-                        mediaRecorder.ondataavailable = event => {
-                            if (event.data.size > 0) {
-                                audioChunks.push(event.data);
-                            }
-                        };
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            audioChunks.push(event.data);
+                        }
+                    };
 
-                        mediaRecorder.onstop = () => {
-                            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                            recordedBlobs[i] = audioBlob;
-                            
-                            const audioUrl = URL.createObjectURL(audioBlob);
-                            audioPlayback.src = audioUrl;
-                            audioPlayback.classList.remove('hidden');
-                            
-                            // Clear file input since we have a recording
-                            fileInput.value = '';
-                            
-                            recordBtn.classList.remove('hidden');
-                            recordBtn.textContent = 'Re-record';
-                            stopBtn.classList.add('hidden');
-                            checkSubmitState();
-                        };
-
-                        mediaRecorder.start();
-                        recordBtn.classList.add('hidden');
-                        stopBtn.classList.remove('hidden');
-                        audioPlayback.classList.add('hidden');
+                    mediaRecorder.onstop = () => {
+                        recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
                         
-                    } catch (err) {
-                        alert('Microphone access is required to record audio.');
-                    }
-                });
+                        const audioUrl = URL.createObjectURL(recordedBlob);
+                        audioPlayback.src = audioUrl;
+                        audioPlayback.classList.remove('hidden');
+                        
+                        // Clear file input since we have a recording
+                        fileInput.value = '';
+                        
+                        recordBtn.classList.remove('hidden');
+                        recordBtn.textContent = 'Re-record';
+                        stopBtn.classList.add('hidden');
+                        checkSubmitState();
+                    };
 
-                stopBtn.addEventListener('click', () => {
-                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                        mediaRecorder.stop();
-                        mediaRecorder.stream.getTracks().forEach(track => track.stop());
-                    }
-                });
-            }
+                    mediaRecorder.start();
+                    recordBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                    audioPlayback.classList.add('hidden');
+                    
+                } catch (err) {
+                    alert('Microphone access is required to record audio.');
+                }
+            });
+
+            stopBtn.addEventListener('click', () => {
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                    mediaRecorder.stream.getTracks().forEach(track => track.stop());
+                }
+            });
 
             // --- Form Submission Logic ---
             const form = document.getElementById('testForm');
@@ -378,28 +363,17 @@
                 allResults = [];
                 exportBtn.classList.add('hidden');
                 
-                let studentsToProcess = [];
-                for(let i=1; i<=5; i++) {
-                    const fileInput = document.getElementById('audioUpload_' + i);
-                    const nameInput = document.getElementById('studentName_' + i);
-                    
-                    if(fileInput.files.length > 0) {
-                        studentsToProcess.push({
-                            id: i,
-                            name: nameInput.value.trim() || `Student ${i}`,
-                            file: fileInput.files[0]
-                        });
-                    } else if (recordedBlobs[i]) {
-                        // For recorded blobs, append them as files
-                        studentsToProcess.push({
-                            id: i,
-                            name: nameInput.value.trim() || `Student ${i}`,
-                            file: new File([recordedBlobs[i]], `recording_${i}.webm`, { type: 'audio/webm' })
-                        });
-                    }
+                let audioFileToProcess = null;
+                const fileInput = document.getElementById('audioUpload');
+                
+                if(fileInput.files.length > 0) {
+                    audioFileToProcess = fileInput.files[0];
+                } else if (recordedBlob) {
+                    // For recorded blobs, append them as files
+                    audioFileToProcess = new File([recordedBlob], `recording.webm`, { type: 'audio/webm' });
                 }
 
-                if (studentsToProcess.length === 0 || !testId) return;
+                if (!audioFileToProcess || !testId) return;
 
                 // UI Loading Setup
                 submitBtn.disabled = true;
@@ -410,119 +384,94 @@
                 resultsContainer.classList.remove('hidden');
                 resultsContainer.innerHTML = ''; // Clear previous results
 
-                // Create placeholder cards for each student
-                const resultElements = {};
-                studentsToProcess.forEach(student => {
-                    const card = document.createElement('div');
-                    card.className = "border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm";
-                    card.innerHTML = `
-                        <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
-                            <h4 class="font-bold text-gray-800">${escapeHtml(student.name)}</h4>
-                            <div class="flex items-center text-xs text-blue-600 font-medium" id="status_${student.id}">
-                                <div class="small-spinner mr-2"></div> Processing...
-                            </div>
+                // Create placeholder card
+                const card = document.createElement('div');
+                card.className = "border border-gray-200 rounded-md bg-gray-50 overflow-hidden shadow-sm";
+                card.innerHTML = `
+                    <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                        <div class="flex items-center text-xs text-blue-600 font-medium" id="status">
+                            <div class="small-spinner mr-2"></div> Processing...
                         </div>
-                        <div class="p-4" id="content_${student.id}">
-                            <div class="animate-pulse flex space-x-4">
-                                <div class="flex-1 space-y-4 py-1">
-                                    <div class="h-2 bg-gray-300 rounded w-3/4"></div>
-                                    <div class="space-y-2">
-                                        <div class="h-2 bg-gray-300 rounded"></div>
-                                        <div class="h-2 bg-gray-300 rounded w-5/6"></div>
-                                    </div>
+                    </div>
+                    <div class="p-4" id="content">
+                        <div class="animate-pulse flex space-x-4">
+                            <div class="flex-1 space-y-4 py-1">
+                                <div class="h-2 bg-gray-300 rounded w-3/4"></div>
+                                <div class="space-y-2">
+                                    <div class="h-2 bg-gray-300 rounded"></div>
+                                    <div class="h-2 bg-gray-300 rounded w-5/6"></div>
                                 </div>
                             </div>
                         </div>
-                    `;
-                    resultsContainer.appendChild(card);
-                    resultElements[student.id] = {
-                        status: card.querySelector(`#status_${student.id}`),
-                        content: card.querySelector(`#content_${student.id}`)
-                    };
-                });
+                    </div>
+                `;
+                resultsContainer.appendChild(card);
+                const statusElement = card.querySelector('#status');
+                const contentElement = card.querySelector('#content');
 
-                // Helper to chunk an array (concurrency limit = 2 requests at a time)
-                const chunkArray = (arr, size) => arr.length ? [arr.slice(0, size), ...chunkArray(arr.slice(size), size)] : [];
-                
-                const studentChunks = chunkArray(studentsToProcess, 2);
+                const formData = new FormData();
+                formData.append('test_id', testId);
+                formData.append('audio', audioFileToProcess);
+                formData.append('model', document.getElementById('modelSelect').value);
 
-                for (const chunk of studentChunks) {
-                    const promises = chunk.map(async (student) => {
-                        const formData = new FormData();
-                        formData.append('test_id', testId);
-                        formData.append('audio', student.file);
-                        formData.append('model', document.getElementById('modelSelect').value);
-
-                        try {
-                            const response = await fetch('/gemini-tests/process', {
-                                method: 'POST',
-                                body: formData,
-                                headers: {
-                                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
-                                }
-                            });
-
-                            const data = await response.json();
-                            const elements = resultElements[student.id];
-
-                            if (response.ok && data.success) {
-                                elements.status.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Done (${escapeHtml(data.time)})</span>`;
-                                // HTML from the backend is assumed safe if sanitized there. We won't double-escape the rich text here, 
-                                // but we did escape the student name.
-                                elements.content.innerHTML = `
-                                    <div class="prose prose-sm max-w-none text-gray-800 bg-white p-3 rounded border border-gray-200">
-                                        ${data.html}
-                                    </div>
-                                `;
-
-                                allResults.push({
-                                    student: student.name,
-                                    test_id: testId,
-                                    model: data.model,
-                                    success: true,
-                                    time: data.time,
-                                    raw_response: data.raw,
-                                    evaluation_html: data.html
-                                });
-                            } else {
-                                elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
-                                elements.content.innerHTML = `
-                                    <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
-                                        ${escapeHtml(data.error || 'Evaluation failed.')}
-                                    </div>
-                                `;
-
-                                allResults.push({
-                                    student: student.name,
-                                    test_id: testId,
-                                    success: false,
-                                    error: data.error || 'Evaluation failed.'
-                                });
-                            }
-                        } catch (error) {
-                            const elements = resultElements[student.id];
-                            elements.status.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
-                            elements.content.innerHTML = `
-                                <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
-                                    Network or server error: ${escapeHtml(error.message)}
-                                </div>
-                            `;
-
-                            allResults.push({
-                                student: student.name,
-                                test_id: testId,
-                                success: false,
-                                error: error.message
-                            });
+                try {
+                    const response = await fetch('/gemini-tests/process', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
                         }
                     });
-                    
-                    // Wait for current chunk to finish before moving to the next
-                    await Promise.allSettled(promises);
+
+                    const data = await response.json();
+
+                    if (response.ok && data.success) {
+                        statusElement.innerHTML = `<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Done (${escapeHtml(data.time)})</span>`;
+                        contentElement.innerHTML = `
+                            <div class="prose prose-sm max-w-none text-gray-800 bg-white p-3 rounded border border-gray-200">
+                                ${data.html}
+                            </div>
+                        `;
+
+                        allResults.push({
+                            test_id: testId,
+                            model: data.model,
+                            success: true,
+                            time: data.time,
+                            raw_response: data.raw,
+                            evaluation_html: data.html
+                        });
+                    } else {
+                        statusElement.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
+                        contentElement.innerHTML = `
+                            <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                                ${escapeHtml(data.error || 'Evaluation failed.')}
+                            </div>
+                        `;
+
+                        allResults.push({
+                            test_id: testId,
+                            success: false,
+                            error: data.error || 'Evaluation failed.'
+                        });
+                    }
+                } catch (error) {
+                    statusElement.innerHTML = `<span class="text-red-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Error</span>`;
+                    contentElement.innerHTML = `
+                        <div class="bg-red-50 text-red-700 p-3 rounded border border-red-200 text-sm">
+                            Network or server error: ${escapeHtml(error.message)}
+                        </div>
+                    `;
+
+                    allResults.push({
+                        test_id: testId,
+                        success: false,
+                        error: error.message
+                    });
                 }
 
                 submitBtn.disabled = false;
-                submitText.textContent = 'Evaluate All with Gemini';
+                submitText.textContent = 'Evaluate with Gemini';
                 submitSpinner.classList.add('hidden');
                 
                 if (allResults.length > 0) {

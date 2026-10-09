@@ -40,7 +40,6 @@ test('it renders the index page successfully', function () {
     ]);
 
     $response = $this->get('/gemini-tests');
-    $response->dump();
     $response->assertSee('Sample Test');
     $response->assertSee('Gemini Model');
 });
@@ -100,7 +99,7 @@ test('it processes the audio successfully with mocked gemini response', function
         'audio' => $audio
     ]);
     
-    $response->dump()
+    $response
              ->assertJson([
                  'success' => true,
                  'model' => 'gemini-1.5-flash'
@@ -177,7 +176,7 @@ test('it allows manual model selection', function () {
         'audio' => $audio
     ]);
     
-    $response->dump()
+    $response
              ->assertJson([
                  'success' => true,
                  'model' => 'gemini-1.5-pro'
