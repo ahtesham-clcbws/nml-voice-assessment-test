@@ -128,7 +128,7 @@
             </div>
 
             <!-- Right Column: Results Display -->
-            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full min-h-[600px]">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col h-full min-h-150">
                 <h2 class="text-lg font-medium text-gray-900 border-b border-gray-200 pb-2 mb-4">Batch Evaluation Results</h2>
                 
                 <div id="emptyState" class="flex-1 flex items-center justify-center text-gray-400">
