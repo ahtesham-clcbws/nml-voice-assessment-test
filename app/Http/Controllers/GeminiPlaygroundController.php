@@ -5,72 +5,21 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use App\Services\GeminiModelService;
 
 class GeminiPlaygroundController extends Controller
 {
+    protected $modelService;
+
+    public function __construct(GeminiModelService $modelService)
+    {
+        $this->modelService = $modelService;
+    }
+
     public function index()
     {
-        $apiKey = env('GEMINI_API_KEY');
-        $models = [];
-        
-        if ($apiKey) {
-            try {
-                $response = Http::timeout(10)->get("https://generativelanguage.googleapis.com/v1beta/models?key={$apiKey}");
-                if ($response->successful()) {
-                    $allModels = $response->json('models') ?? [];
-                    foreach ($allModels as $model) {
-                        $name = strtolower($model['name']);
-                        
-                        // Only process models with 'flash' in the name
-                        if (str_contains($name, 'flash')) {
-                            
-                            // Exclude specialized/non-universal models
-                            $excludedKeywords = ['preview', 'image', 'tts', 'transcribe', 'computer-use', 'omni'];
-                            $isUniversal = true;
-                            foreach ($excludedKeywords as $keyword) {
-                                if (str_contains($name, $keyword)) {
-                                    $isUniversal = false;
-                                    break;
-                                }
-                            }
-
-                            if ($isUniversal) {
-                                $modelName = str_replace('models/', '', $model['name']);
-                                
-                                // Determine tier (1: lowest/lite, 2: standard flash)
-                                $tier = str_contains($modelName, 'lite') || str_contains($modelName, '8b') ? 1 : 2;
-
-                                $models[] = [
-                                    'name' => $modelName,
-                                    'displayName' => $model['displayName'] ?? $modelName,
-                                    'tier' => $tier
-                                ];
-                            }
-                        }
-                    }
-                }
-            } catch (\Exception $e) {
-                // Ignore and use fallback
-            }
-        }
-
-        if (empty($models)) {
-            $models = [
-                ['name' => 'gemini-3.8-flash-lite', 'displayName' => 'Gemini 3.8 Flash Lite', 'tier' => 1],
-                ['name' => 'gemini-3.8-flash', 'displayName' => 'Gemini 3.8 Flash', 'tier' => 2]
-            ];
-        }
-
-        // Sort intelligently: Lowest tier first (Lite/8b), then alphabetical/version order
-        usort($models, function($a, $b) {
-            if ($a['tier'] === $b['tier']) {
-                // If same tier, sort alphabetically so older/smaller versions might appear first, 
-                // or just standard ascending order.
-                return $a['name'] <=> $b['name'];
-            }
-            return $a['tier'] <=> $b['tier'];
-        });
-
+        $models = $this->modelService->getAvailableModels();
         return view('gemini-playground.index', compact('models'));
     }
 
@@ -79,26 +28,24 @@ class GeminiPlaygroundController extends Controller
         $request->validate([
             'context' => 'required|string',
             'model' => 'required|string',
-            'audio' => 'required|file|mimes:audio/mpeg,mpga,mp3,wav,webm,ogg|max:20480',
+            'audio' => 'required|file|mimes:audio/mpeg,mpga,mp3,wav,webm,ogg,mp4|max:20480',
         ]);
 
+        $modelName = $request->input('model');
+        if (!$this->modelService->isValidModel($modelName)) {
+            return response()->json(['error' => 'Invalid Gemini model selected. Please refresh and try again.'], 400);
+        }
 
         $apiKey = env('GEMINI_API_KEY');
-        
         if (!$apiKey) {
-            return response()->json([
-                'error' => 'Gemini API key is not configured in .env'
-            ], 500);
+            return response()->json(['error' => 'Gemini API key is not configured on the server.'], 500);
         }
 
         $audioFile = $request->file('audio');
         $base64Audio = base64_encode(file_get_contents($audioFile->getRealPath()));
         $mimeType = $audioFile->getClientMimeType();
-
-        // Fix webm mime type if browser sends it weirdly, Google API prefers audio/webm
-        if (str_starts_with($mimeType, 'video/webm')) {
-            $mimeType = 'audio/webm';
-        }
+        if (str_starts_with($mimeType, 'video/webm')) $mimeType = 'audio/webm';
+        if (str_starts_with($mimeType, 'video/mp4')) $mimeType = 'audio/mp4';
 
         $startTime = microtime(true);
 
@@ -118,41 +65,48 @@ class GeminiPlaygroundController extends Controller
             ]
         ];
 
-        $model = $request->input('model');
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key={$apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$modelName}:generateContent?key={$apiKey}";
 
         try {
             $response = Http::timeout(120)->post($url, $payload);
-            
             $executionTime = microtime(true) - $startTime;
 
             if ($response->successful()) {
                 $responseData = $response->json();
-                $textResponse = $responseData['candidates'][0]['content']['parts'][0]['text'] ?? 'No text response found.';
-                $tokenUsage = $responseData['usageMetadata'] ?? null;
+                
+                $textResponse = 'No text response found in the API response.';
+                if (isset($responseData['candidates'][0]['content']['parts'])) {
+                    foreach ($responseData['candidates'][0]['content']['parts'] as $part) {
+                        if (isset($part['text'])) {
+                            $textResponse = $part['text'];
+                            break;
+                        }
+                    }
+                }
+
+                $htmlResponse = Str::markdown($textResponse, [
+                    'html_input' => 'strip', 
+                    'allow_unsafe_links' => false,
+                ]);
 
                 return response()->json([
                     'success' => true,
-                    'text' => $textResponse,
+                    'html' => $htmlResponse,
                     'raw' => $responseData,
                     'time' => round($executionTime, 2) . 's',
-                    'tokens' => $tokenUsage,
-                    'model' => $model
+                    'tokens' => $responseData['usageMetadata'] ?? null,
+                    'model' => $modelName
                 ]);
             } else {
+                Log::error('Gemini API Error Response', ['status' => $response->status(), 'body' => $response->body()]);
                 return response()->json([
                     'success' => false,
-                    'error' => 'API Error: ' . $response->body(),
-                    'time' => round($executionTime, 2) . 's'
+                    'error' => 'The AI evaluation service returned an error. Please try again.',
                 ], $response->status());
             }
-
         } catch (\Exception $e) {
             Log::error('Gemini API Exception: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'error' => 'Server Error: ' . $e->getMessage(),
-            ], 500);
+            return response()->json(['success' => false, 'error' => 'An unexpected server error occurred during evaluation.'], 500);
         }
     }
 }

@@ -127,7 +127,7 @@
                         </span>
                     </div>
 
-                    <div class="flex-1 bg-gray-50 p-4 rounded-md overflow-y-auto whitespace-pre-wrap text-sm text-gray-800 border border-gray-200" id="resText"></div>
+                    <div class="flex-1 bg-gray-50 p-4 rounded-md overflow-y-auto prose prose-sm max-w-none border border-gray-200 text-gray-800" id="resText"></div>
 
                     <details class="mt-4">
                         <summary class="cursor-pointer text-sm font-medium text-gray-600 hover:text-gray-900 focus:outline-none">View Raw API Response</summary>
@@ -274,7 +274,7 @@
 
                     if (response.ok && data.success) {
                         resultState.classList.remove('hidden');
-                        document.getElementById('resText').textContent = data.text;
+                        document.getElementById('resText').innerHTML = data.html;
                         document.getElementById('resModel').textContent = data.model;
                         document.getElementById('resTime').textContent = data.time;
                         

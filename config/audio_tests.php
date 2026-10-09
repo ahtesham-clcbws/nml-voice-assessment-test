@@ -58,7 +58,7 @@ return [
         'title' => 'Test 6: Fluency',
         'difficulty' => 'Intermediate',
         'instruction' => 'Read naturally.',
-        'display_text' => "Every morning, Sara wakes up early and prepares for school. She enjoys reading books and learning new things.",
+        'display_text' => "Every morning, Sara wakes up early and prepares for school. She enjoys reading books and learning new things. Sometimes she finds difficult words, but she tries again until she understands them.",
         'gemini_context' => "Evaluate the student's reading fluency using the attached audio.\n\nExpected passage:\n\"Every morning, Sara wakes up early and prepares for school. She enjoys reading books and learning new things. Sometimes she finds difficult words, but she tries again until she understands them.\"\n\nAssess:\n- Reading continuity\n- Pauses\n- Hesitations\n- Repetitions\n- Reading pace\n- Expression\n\nExplain each observation using evidence from the recording.\n\nDo not confuse slow reading with incorrect reading.",
     ],
     [

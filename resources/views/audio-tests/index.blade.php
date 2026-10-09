@@ -389,15 +389,7 @@
                     if (response.ok && data.success) {
                         resultState.classList.remove('hidden');
                         
-                        // Parse markdown-like tables or bold tags manually if needed, 
-                        // but since Tailwind prose handles basic markdown if we include a markdown parser,
-                        // for now we just dump text. (A proper MD parser is ideal, using simple regex for bold)
-                        let parsedText = data.text
-                                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                                            .replace(/\n/g, '<br>');
-                        
-                        document.getElementById('resText').innerHTML = parsedText;
+                        document.getElementById('resText').innerHTML = data.html;
                         document.getElementById('resModel').textContent = data.model;
                         document.getElementById('resTime').textContent = data.time;
                         
