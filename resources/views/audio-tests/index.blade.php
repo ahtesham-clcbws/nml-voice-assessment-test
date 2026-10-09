@@ -233,10 +233,12 @@
                 
                 if(test.language === 'Urdu' || test.language === 'Arabic/Qaida') {
                     infoText.setAttribute('dir', 'rtl');
-                    infoText.classList.add('text-right');
+                    infoText.classList.add('text-right', 'text-4xl');
+                    infoText.classList.remove('text-lg');
                 } else {
                     infoText.setAttribute('dir', 'ltr');
-                    infoText.classList.remove('text-right');
+                    infoText.classList.remove('text-right', 'text-4xl');
+                    infoText.classList.add('text-lg');
                 }
 
                 testInfo.classList.remove('hidden');
