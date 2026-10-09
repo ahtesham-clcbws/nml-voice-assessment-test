@@ -26,7 +26,15 @@
             height: 1rem;
             animation: spin 1s ease-in-out infinite;
         }
+        .font-urdu-arabic {
+            font-family: 'Amiri', 'Noto Naskh Arabic', serif;
+            line-height: 1.8;
+        }
+        .font-english {
+            font-family: 'Merriweather', serif;
+        }
     </style>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Merriweather:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-8">
@@ -87,7 +95,7 @@
                         
                         <div>
                             <h4 class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1">Text to Read</h4>
-                            <div id="infoText" class="text-lg bg-white p-3 rounded border border-blue-200 text-gray-800 whitespace-pre-wrap leading-relaxed font-serif" dir="auto"></div>
+                            <div id="infoText" class="text-lg bg-white p-3 rounded border border-blue-200 text-gray-800 whitespace-pre-wrap leading-relaxed font-english" dir="auto"></div>
                         </div>
                     </div>
 
@@ -233,12 +241,12 @@
                 
                 if(test.language === 'Urdu' || test.language === 'Arabic/Qaida') {
                     infoText.setAttribute('dir', 'rtl');
-                    infoText.classList.add('text-right', 'text-4xl');
-                    infoText.classList.remove('text-lg');
+                    infoText.classList.add('text-right', 'text-4xl', 'font-urdu-arabic');
+                    infoText.classList.remove('text-lg', 'font-english');
                 } else {
                     infoText.setAttribute('dir', 'ltr');
-                    infoText.classList.remove('text-right', 'text-4xl');
-                    infoText.classList.add('text-lg');
+                    infoText.classList.remove('text-right', 'text-4xl', 'font-urdu-arabic');
+                    infoText.classList.add('text-lg', 'font-english');
                 }
 
                 testInfo.classList.remove('hidden');
