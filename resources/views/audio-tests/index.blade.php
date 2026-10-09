@@ -34,7 +34,7 @@
             font-family: 'Merriweather', serif;
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Merriweather:wght@400;700&family=Noto+Naskh+Arabic:wght@400;700&display=swap" rel="stylesheet">
+    <link href="/fonts/fonts.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen">
     <div class="max-w-7xl mx-auto px-4 py-8">
