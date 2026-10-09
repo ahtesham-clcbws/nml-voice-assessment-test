@@ -83,12 +83,18 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Gemini Model</label>
-                            <select id="modelSelect" name="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
-                                @foreach($models as $model)
-                                    <option value="{{ $model['name'] }}">{{ $model['displayName'] }} ({{ $model['name'] }})</option>
-                                @endforeach
-                            </select>
-                            <p class="text-xs text-gray-500 mt-1">Leave as default for lowest-cost suitable model.</p>
+                            @if(isset($modelError) && $modelError)
+                                <div class="text-sm text-red-600 mt-1 font-medium bg-red-50 p-2 rounded border border-red-200">
+                                    {{ $modelError }}
+                                </div>
+                            @else
+                                <select id="modelSelect" name="model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2">
+                                    @foreach($models as $model)
+                                        <option value="{{ $model['name'] }}">{{ $model['displayName'] }} ({{ $model['name'] }})</option>
+                                    @endforeach
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">Leave as default for lowest-cost suitable model.</p>
+                            @endif
                         </div>
                     </div>
 
@@ -183,8 +189,9 @@
             const exportBtn = document.getElementById('exportBtn');
             let allResults = [];
             
-            // Store recorded blob temporarily
+            // Store recorded blob and its mime type temporarily
             let recordedBlob = null;
+            let recordedMime = 'audio/webm';
 
             // HTML Escape utility to prevent XSS
             function escapeHtml(unsafe) {
@@ -317,7 +324,8 @@
                     };
 
                     mediaRecorder.onstop = () => {
-                        recordedBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                        recordedMime = mediaRecorder.mimeType || 'audio/webm';
+                        recordedBlob = new Blob(audioChunks, { type: recordedMime });
                         
                         const audioUrl = URL.createObjectURL(recordedBlob);
                         audioPlayback.src = audioUrl;
@@ -369,8 +377,12 @@
                 if(fileInput.files.length > 0) {
                     audioFileToProcess = fileInput.files[0];
                 } else if (recordedBlob) {
-                    // For recorded blobs, append them as files
-                    audioFileToProcess = new File([recordedBlob], `recording.webm`, { type: 'audio/webm' });
+                    // For recorded blobs, append them as files with proper extension
+                    let ext = 'webm';
+                    if (recordedMime.includes('mp4')) ext = 'mp4';
+                    else if (recordedMime.includes('ogg')) ext = 'ogg';
+                    
+                    audioFileToProcess = new File([recordedBlob], `recording.${ext}`, { type: recordedMime });
                 }
 
                 if (!audioFileToProcess || !testId) return;

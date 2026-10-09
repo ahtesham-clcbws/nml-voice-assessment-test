@@ -94,9 +94,7 @@ class GeminiModelService
             }
 
             if (!$success && empty($models)) {
-                return [
-                    ['name' => 'gemini-1.5-flash', 'displayName' => 'Gemini 1.5 Flash (Fallback)', 'tier' => 2]
-                ];
+                throw new \Exception("Model discovery failed. Please verify your API key and network connection.");
             }
 
             usort($models, function($a, $b) {

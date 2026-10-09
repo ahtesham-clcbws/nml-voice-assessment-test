@@ -38,9 +38,15 @@ class AudioTestController extends Controller
         $tests = config('audio_tests');
         
         // Fetch valid models dynamically to ensure the UI only shows models that are currently available.
-        $models = $this->modelService->getAvailableModels();
+        try {
+            $models = $this->modelService->getAvailableModels();
+            $modelError = null;
+        } catch (\Exception $e) {
+            $models = [];
+            $modelError = $e->getMessage();
+        }
 
-        return view('audio-tests.index', compact('tests', 'models'));
+        return view('audio-tests.index', compact('tests', 'models', 'modelError'));
     }
 
     /**
@@ -69,14 +75,18 @@ class AudioTestController extends Controller
         $requestedModel = $request->input('model');
         $modelName = null;
         
-        if ($requestedModel) {
-            if ($this->modelService->isValidModel($requestedModel)) {
-                $modelName = $requestedModel;
+        try {
+            if ($requestedModel) {
+                if ($this->modelService->isValidModel($requestedModel)) {
+                    $modelName = $requestedModel;
+                } else {
+                    return response()->json(['success' => false, 'error' => 'Invalid or unsupported model selected.'], 400);
+                }
             } else {
-                return response()->json(['success' => false, 'error' => 'Invalid or unsupported model selected.'], 400);
+                $modelName = $this->modelService->getBestModel();
             }
-        } else {
-            $modelName = $this->modelService->getBestModel();
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'Model discovery error: ' . $e->getMessage()], 500);
         }
 
         if (!$modelName) {
